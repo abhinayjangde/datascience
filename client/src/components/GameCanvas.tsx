@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { playMoveSound, playCollisionSound, initializeAudio } from "@/utils/sounds";
 
 // Game Constants
 const CANVAS_WIDTH = 400;
@@ -42,6 +43,7 @@ export function GameCanvas() {
   const speedRef = useRef(5);
   const lastTimeRef = useRef(0);
   const obstacleSpawnTimer = useRef(0);
+  const lastMoveSoundTime = useRef(0);
   
   // Form State
   const [username, setUsername] = useState("");
@@ -49,6 +51,7 @@ export function GameCanvas() {
   const { toast } = useToast();
 
   const startGame = () => {
+    initializeAudio(); // Resume audio context if suspended
     setGameState({ isPlaying: true, isGameOver: false, score: 0, speed: 5 });
     playerX.current = CANVAS_WIDTH / 2 - CAR_WIDTH / 2;
     targetX.current = playerX.current;
@@ -58,6 +61,7 @@ export function GameCanvas() {
     scoreRef.current = 0;
     speedRef.current = 5;
     lastTimeRef.current = performance.now();
+    lastMoveSoundTime.current = 0;
     
     if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     loop(performance.now());
@@ -68,14 +72,29 @@ export function GameCanvas() {
     
     const moveAmount = LANE_WIDTH;
     const moveVertical = 40;
+    let moved = false;
+    
     if (e.key === "ArrowLeft") {
       targetX.current = Math.max(0, targetX.current - moveAmount);
+      moved = true;
     } else if (e.key === "ArrowRight") {
       targetX.current = Math.min(CANVAS_WIDTH - CAR_WIDTH, targetX.current + moveAmount);
+      moved = true;
     } else if (e.key === "ArrowUp") {
       targetY.current = Math.max(0, targetY.current - moveVertical);
+      moved = true;
     } else if (e.key === "ArrowDown") {
       targetY.current = Math.min(CANVAS_HEIGHT - CAR_HEIGHT, targetY.current + moveVertical);
+      moved = true;
+    }
+    
+    // Play movement sound with debounce (avoid sound spam)
+    if (moved) {
+      const now = Date.now();
+      if (now - lastMoveSoundTime.current > 100) {
+        playMoveSound();
+        lastMoveSoundTime.current = now;
+      }
     }
   };
 
@@ -92,11 +111,31 @@ export function GameCanvas() {
     } else {
       targetX.current = Math.min(CANVAS_WIDTH - CAR_WIDTH, targetX.current + moveAmount);
     }
+    
+    // Play movement sound
+    const now = Date.now();
+    if (now - lastMoveSoundTime.current > 100) {
+      playMoveSound();
+      lastMoveSoundTime.current = now;
+    }
   };
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    // Initialize audio on first interaction
+    const handleFirstInteraction = () => {
+      initializeAudio();
+      document.removeEventListener("click", handleFirstInteraction);
+      document.removeEventListener("touchstart", handleFirstInteraction);
+    };
+    document.addEventListener("click", handleFirstInteraction);
+    document.addEventListener("touchstart", handleFirstInteraction);
+    
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("click", handleFirstInteraction);
+      document.removeEventListener("touchstart", handleFirstInteraction);
+    };
   }, [gameState.isPlaying, gameState.isGameOver]);
 
   const loop = (timestamp: number) => {
@@ -168,6 +207,7 @@ export function GameCanvas() {
     });
 
     if (collision) {
+      playCollisionSound();
       setGameState(prev => ({ ...prev, isPlaying: false, isGameOver: true }));
       cancelAnimationFrame(animationFrameId.current);
       return;
