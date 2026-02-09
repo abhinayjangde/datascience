@@ -86,6 +86,8 @@ export default {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
+        display: ["'Press Start 2P'", "cursive"],
+        body: ["'Orbitron'", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
