@@ -33,6 +33,7 @@ export function GameCanvas() {
   
   // Game Logic Refs (to avoid re-renders during loop)
   const playerX = useRef(CANVAS_WIDTH / 2 - CAR_WIDTH / 2);
+  const targetX = useRef(CANVAS_WIDTH / 2 - CAR_WIDTH / 2);
   const obstacles = useRef<{ x: number; y: number; color: string }[]>([]);
   const animationFrameId = useRef<number>(0);
   const scoreRef = useRef(0);
@@ -48,6 +49,7 @@ export function GameCanvas() {
   const startGame = () => {
     setGameState({ isPlaying: true, isGameOver: false, score: 0, speed: 5 });
     playerX.current = CANVAS_WIDTH / 2 - CAR_WIDTH / 2;
+    targetX.current = playerX.current;
     obstacles.current = [];
     scoreRef.current = 0;
     speedRef.current = 5;
@@ -60,11 +62,11 @@ export function GameCanvas() {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!gameState.isPlaying || gameState.isGameOver) return;
     
-    const moveAmount = 20;
+    const moveAmount = LANE_WIDTH;
     if (e.key === "ArrowLeft") {
-      playerX.current = Math.max(0, playerX.current - moveAmount);
+      targetX.current = Math.max(0, targetX.current - moveAmount);
     } else if (e.key === "ArrowRight") {
-      playerX.current = Math.min(CANVAS_WIDTH - CAR_WIDTH, playerX.current + moveAmount);
+      targetX.current = Math.min(CANVAS_WIDTH - CAR_WIDTH, targetX.current + moveAmount);
     }
   };
 
@@ -75,10 +77,11 @@ export function GameCanvas() {
     if (!rect) return;
     
     const touchX = e.touches[0].clientX - rect.left;
+    const moveAmount = LANE_WIDTH;
     if (touchX < CANVAS_WIDTH / 2) {
-      playerX.current = Math.max(0, playerX.current - 20);
+      targetX.current = Math.max(0, targetX.current - moveAmount);
     } else {
-      playerX.current = Math.min(CANVAS_WIDTH - CAR_WIDTH, playerX.current + 20);
+      targetX.current = Math.min(CANVAS_WIDTH - CAR_WIDTH, targetX.current + moveAmount);
     }
   };
 
@@ -94,6 +97,10 @@ export function GameCanvas() {
 
     const deltaTime = timestamp - lastTimeRef.current;
     lastTimeRef.current = timestamp;
+
+    // Smooth movement interpolation
+    const lerpSpeed = 0.25;
+    playerX.current += (targetX.current - playerX.current) * lerpSpeed;
 
     // Update
     obstacleSpawnTimer.current += deltaTime;
