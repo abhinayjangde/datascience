@@ -34,6 +34,8 @@ export function GameCanvas() {
   // Game Logic Refs (to avoid re-renders during loop)
   const playerX = useRef(CANVAS_WIDTH / 2 - CAR_WIDTH / 2);
   const targetX = useRef(CANVAS_WIDTH / 2 - CAR_WIDTH / 2);
+  const playerY = useRef(CANVAS_HEIGHT - CAR_HEIGHT - 20);
+  const targetY = useRef(CANVAS_HEIGHT - CAR_HEIGHT - 20);
   const obstacles = useRef<{ x: number; y: number; color: string }[]>([]);
   const animationFrameId = useRef<number>(0);
   const scoreRef = useRef(0);
@@ -50,6 +52,8 @@ export function GameCanvas() {
     setGameState({ isPlaying: true, isGameOver: false, score: 0, speed: 5 });
     playerX.current = CANVAS_WIDTH / 2 - CAR_WIDTH / 2;
     targetX.current = playerX.current;
+    playerY.current = CANVAS_HEIGHT - CAR_HEIGHT - 20;
+    targetY.current = playerY.current;
     obstacles.current = [];
     scoreRef.current = 0;
     speedRef.current = 5;
@@ -63,10 +67,15 @@ export function GameCanvas() {
     if (!gameState.isPlaying || gameState.isGameOver) return;
     
     const moveAmount = LANE_WIDTH;
+    const moveVertical = 40;
     if (e.key === "ArrowLeft") {
       targetX.current = Math.max(0, targetX.current - moveAmount);
     } else if (e.key === "ArrowRight") {
       targetX.current = Math.min(CANVAS_WIDTH - CAR_WIDTH, targetX.current + moveAmount);
+    } else if (e.key === "ArrowUp") {
+      targetY.current = Math.max(0, targetY.current - moveVertical);
+    } else if (e.key === "ArrowDown") {
+      targetY.current = Math.min(CANVAS_HEIGHT - CAR_HEIGHT, targetY.current + moveVertical);
     }
   };
 
@@ -101,6 +110,7 @@ export function GameCanvas() {
     // Smooth movement interpolation
     const lerpSpeed = 0.25;
     playerX.current += (targetX.current - playerX.current) * lerpSpeed;
+    playerY.current += (targetY.current - playerY.current) * lerpSpeed;
 
     // Update
     obstacleSpawnTimer.current += deltaTime;
@@ -139,7 +149,7 @@ export function GameCanvas() {
     // Collision Detection
     const playerRect = {
       x: playerX.current + 5, // slight hitbox reduction
-      y: CANVAS_HEIGHT - CAR_HEIGHT - 20,
+      y: playerY.current + 5,
       w: CAR_WIDTH - 10,
       h: CAR_HEIGHT - 10
     };
@@ -191,7 +201,7 @@ export function GameCanvas() {
     ctx.fillStyle = "#000";
     ctx.strokeStyle = "#06b6d4";
     ctx.lineWidth = 3;
-    const pY = CANVAS_HEIGHT - CAR_HEIGHT - 20;
+    const pY = playerY.current;
     ctx.strokeRect(playerX.current, pY, CAR_WIDTH, CAR_HEIGHT);
     ctx.fillRect(playerX.current, pY, CAR_WIDTH, CAR_HEIGHT);
     
